@@ -1125,6 +1125,7 @@
                 // Data Fetching
                 const fetchExpeditions = async (silent = false) => {
                     if (!silent) loading.value = true;
+                    console.log('[DEBUG] fetchExpeditions - Starting...');
                     try {
                         const q = new AV.Query(CLASS_EXPEDITION);
 
@@ -1136,13 +1137,19 @@
                         q.descending('isSticky'); // Sticky first
                         q.addDescending('createdAt'); // Then new ones
                         q.limit(30);
+
+                        console.log('[DEBUG] fetchExpeditions - Executing query...');
                         const results = await q.find();
+                        console.log('[DEBUG] fetchExpeditions - Query results count:', results.length);
+                        console.log('[DEBUG] fetchExpeditions - Raw results:', results);
+
                         // Need to fetch participant counts for list view efficiency? 
                         // For now, let's keep it simple. If scaling, we should use Cloud Code counters.
                         // Here we just fetch list. We'll load participants lazily or add a 'count' field later.
                         // For this version, let's just show the events. 
                         // Optimization: We will load ALL participants for these 30 events in one query to show counts locally.
                         const exps = results.map(o => ({ id: o.id, ...o.toJSON() }));
+                        console.log('[DEBUG] fetchExpeditions - Mapped expeditions:', exps);
 
                         if (exps.length > 0) {
                             const eventIds = exps.map(e => e.id);
@@ -1150,6 +1157,7 @@
                             pq.containedIn('expeditionId', eventIds);
                             pq.limit(1000);
                             const parts = await pq.find();
+                            console.log('[DEBUG] fetchExpeditions - Participants count:', parts.length);
                             // Attach counts directly to expedition objects for UI
                             const partsData = parts.map(p => p.toJSON());
                             exps.forEach(e => {
@@ -1157,7 +1165,11 @@
                             });
                         }
                         expeditions.value = exps;
+                        console.log('[DEBUG] fetchExpeditions - Final expeditions.value:', expeditions.value);
                     } catch (e) {
+                        console.error('[DEBUG] fetchExpeditions - ERROR:', e);
+                        console.error('[DEBUG] Error code:', e.code);
+                        console.error('[DEBUG] Error message:', e.message);
                         // FIX: Handle "Class not found" error gracefully
                         if (e.code === 404 || e.code === 101 || e.message?.includes("Class or object doesn't exists")) {
                             console.log("Database classes not initialized yet. Waiting for first event creation.");
