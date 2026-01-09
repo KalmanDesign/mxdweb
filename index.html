@@ -960,6 +960,9 @@
                 const configError = ref(false);
                 const toast = ref({ show: false, msg: '', type: 'info' });
 
+                // 🔍 调试模式 - URL参数 ?debug=1 激活
+                const debugMode = ref(new URLSearchParams(window.location.search).get('debug') === '1');
+
                 // Data
                 const expeditions = ref([]);
                 const currentExpedition = ref(null);
@@ -1086,6 +1089,7 @@
 
                 const fetchConfig = async () => {
                     try {
+                        if (debugMode.value) showToast('🔍 开始加载配置...', 'info');
                         console.log('[DEBUG] fetchConfig - Starting...');
                         const q = new AV.Query(CLASS_CONFIG);
                         q.descending('createdAt'); // Ensure we get the latest config
@@ -1108,14 +1112,24 @@
                             console.log('[DEBUG] adminPassword.value after assignment:', adminPassword.value);
                             console.log('[DEBUG] globalNotice.value after assignment:', globalNotice.value);
 
+                            if (debugMode.value) {
+                                if (pwd) {
+                                    showToast(`✅ 密码已加载 (${pwd.length}字符)`, 'success');
+                                } else {
+                                    showToast('⚠️ 配置已加载但密码为空', 'error');
+                                }
+                            }
+
                             // Pre-fill settings form
                             settingsForm.value.announcement = globalNotice.value;
                             // Don't pre-fill password for security
                         } else {
                             console.warn('[DEBUG] No config object found in ExpeditionConfig table');
+                            if (debugMode.value) showToast('❌ 未找到配置记录', 'error');
                         }
                     } catch (e) {
                         console.error('[DEBUG] fetchConfig error:', e);
+                        if (debugMode.value) showToast(`❌ 配置加载失败: ${e.code}`, 'error');
                         if (e.code !== 101 && e.code !== 404 && !e.message?.includes("Class or object doesn't exists")) {
                             console.warn("Config fetch error:", e);
                         }
@@ -1126,6 +1140,7 @@
                 const fetchExpeditions = async (silent = false) => {
                     if (!silent) loading.value = true;
                     console.log('[DEBUG] fetchExpeditions - Starting...');
+                    if (debugMode.value && !silent) showToast('🔍 开始加载活动列表...', 'info');
                     try {
                         const q = new AV.Query(CLASS_EXPEDITION);
 
