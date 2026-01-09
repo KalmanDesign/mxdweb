@@ -1,0 +1,1745 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>冒险岛远征队接龙 Pro</title>
+
+    <!-- 1. 样式库 Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 2. 图标库 Lucide -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- 3. LeanCloud SDK -->
+    <script src="https://cdn.jsdelivr.net/npm/leancloud-storage@4.15.0/dist/av-min.js"></script>
+    <!-- 4. Vue.js -->
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+
+    <!-- Google Fonts for better typography -->
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['"Noto Sans SC"', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+                    },
+                    colors: {
+                        maple: {
+                            dark: '#0f172a',
+                            card: '#1e293b',
+                            accent: '#f59e0b', // Amber
+                            accentHover: '#d97706',
+                            danger: '#ef4444',
+                            success: '#10b981',
+                            glass: 'rgba(30, 41, 59, 0.6)'
+                        }
+                    },
+                    animation: {
+                        'fade-in': 'fadeIn 0.3s ease-out',
+                        'slide-up': 'slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
+                        'slide-in-right': 'slideInRight 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
+                    },
+                    keyframes: {
+                        fadeIn: {
+                            '0%': { opacity: '0' },
+                            '100%': { opacity: '1' },
+                        },
+                        slideUp: {
+                            '0%': { transform: 'translateY(20px)', opacity: '0' },
+                            '100%': { transform: 'translateY(0)', opacity: '1' },
+                        },
+                        slideInRight: {
+                            '0%': { transform: 'translateX(20px)', opacity: '0' },
+                            '100%': { transform: 'translateX(0)', opacity: '1' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            background-color: #020617;
+            background-image:
+                radial-gradient(at 0% 0%, rgba(245, 158, 11, 0.1) 0px, transparent 50%),
+                radial-gradient(at 100% 100%, rgba(59, 130, 246, 0.1) 0px, transparent 50%);
+            background-attachment: fixed;
+            color: #e2e8f0;
+            -webkit-font-smoothing: antialiased;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        /* 自定义滚动条 */
+        ::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 4px;
+        }
+
+        /* 隐藏水平滚动条但保留滚动功能 */
+        .scrollbar-hide::-webkit-scrollbar {
+            display: none;
+        }
+
+        .scrollbar-hide {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+
+        .glass-panel {
+            background: rgba(30, 41, 59, 0.4);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.2);
+        }
+
+        .glass-header {
+            background: rgba(15, 23, 42, 0.85);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        /* 职业系别颜色标记 */
+        .job-warrior {
+            border-left-color: #ef4444;
+        }
+
+        /* 红 */
+        .job-mage {
+            border-left-color: #3b82f6;
+        }
+
+        /* 蓝 */
+        .job-archer {
+            border-left-color: #22c55e;
+        }
+
+        /* 绿 */
+        .job-thief {
+            border-left-color: #a855f7;
+        }
+
+        /* 紫 */
+        .job-pirate {
+            border-left-color: #eab308;
+        }
+
+        /* 黄 */
+        .job-other {
+            border-left-color: #94a3b8;
+        }
+
+        /* 灰 */
+
+        .loading-spinner {
+            width: 20px;
+            height: 20px;
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-top-color: #f59e0b;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* 简单的跑马灯效果 */
+        .marquee-container {
+            overflow: hidden;
+            white-space: nowrap;
+            position: relative;
+        }
+
+        .marquee-content {
+            display: inline-block;
+            animation: marquee 15s linear infinite;
+        }
+
+        @keyframes marquee {
+            0% {
+                transform: translateX(100%);
+            }
+
+            100% {
+                transform: translateX(-100%);
+            }
+        }
+
+        /* 修改 date input 的图标颜色 (Chrome/Edge) */
+        input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+            filter: invert(1);
+            cursor: pointer;
+            opacity: 0.6;
+        }
+
+        input[type="datetime-local"]::-webkit-calendar-picker-indicator:hover {
+            opacity: 1;
+        }
+    </style>
+</head>
+
+<body class="min-h-screen text-slate-200">
+    <div id="app" class="pb-24">
+
+        <!-- 顶部导航 -->
+        <header class="glass-header sticky top-0 z-40 transition-all duration-300">
+            <div class="max-w-md mx-auto flex justify-between items-center px-4 py-3">
+                <div class="flex items-center gap-2.5" @click="viewMode === 'detail' ? goBack() : null">
+                    <div
+                        class="bg-gradient-to-br from-amber-500 to-orange-600 w-8 h-8 rounded-lg flex items-center justify-center shadow-lg shadow-amber-900/20">
+                        <i data-lucide="sword" class="w-5 h-5 text-white"></i>
+                    </div>
+                    <h1 class="font-bold text-lg tracking-wide text-white">冒险岛接龙</h1>
+                </div>
+
+                <div class="flex items-center gap-2">
+                    <!-- 刷新按钮 -->
+                    <button @click="refreshData"
+                        class="p-2 rounded-full text-slate-400 hover:bg-white/5 active:scale-95 transition-all">
+                        <i data-lucide="refresh-cw" class="w-5 h-5" :class="{'animate-spin': loading}"></i>
+                    </button>
+                    <!-- 管理员设置 -->
+                    <button v-if="adminMode" @click="showSettings = true"
+                        class="p-2 rounded-full text-amber-400 bg-amber-500/10 hover:bg-amber-500/20 active:scale-95 transition-all">
+                        <i data-lucide="settings-2" class="w-5 h-5"></i>
+                    </button>
+                    <!-- 登录锁 -->
+                    <button @click="adminMode ? (adminMode=false, showToast('已退出管理模式')) : (showAdminLogin=true)"
+                        class="p-2 rounded-full transition-all active:scale-95"
+                        :class="adminMode ? 'text-green-400 bg-green-500/10' : 'text-slate-500 hover:text-slate-300'">
+                        <i :data-lucide="adminMode ? 'unlock' : 'lock'" class="w-5 h-5"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- 全局公告 (如果有) -->
+            <div v-if="globalNotice" class="bg-blue-600/10 border-y border-blue-500/10 py-1.5 overflow-hidden">
+                <div class="max-w-md mx-auto px-4 flex items-center gap-2 text-xs text-blue-200">
+                    <i data-lucide="megaphone" class="w-3.5 h-3.5 shrink-0 animate-pulse"></i>
+                    <div class="marquee-container w-full">
+                        <span class="marquee-content">{{ globalNotice }}</span>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- 主内容区 -->
+        <main class="max-w-md mx-auto p-4 relative z-10 min-h-[80vh]">
+
+            <!-- 错误提示 -->
+            <div v-if="configError"
+                class="mb-6 bg-red-500/10 border border-red-500/20 p-4 rounded-xl flex gap-3 animate-fade-in">
+                <i data-lucide="alert-triangle" class="w-6 h-6 text-red-400 shrink-0"></i>
+                <div class="text-sm text-red-200/90">
+                    <p class="font-bold mb-1">配置缺失</p>
+                    <p>请在代码中配置 LeanCloud AppID 和 Key。</p>
+                </div>
+            </div>
+
+            <!-- 列表视图 (LIST VIEW) -->
+            <div v-if="viewMode === 'list'" class="space-y-6 animate-fade-in">
+
+                <!-- 管理员创建入口 -->
+                <div v-if="adminMode"
+                    class="bg-gradient-to-r from-amber-600/20 to-orange-600/20 border border-amber-500/30 rounded-2xl p-5 mb-6">
+                    <div class="flex justify-between items-center mb-3">
+                        <h3 class="font-bold text-amber-100 flex items-center gap-2">
+                            <i data-lucide="plus-circle" class="w-5 h-5 text-amber-500"></i>
+                            发布新活动
+                        </h3>
+                        <span class="text-xs text-amber-500/70 font-mono">ADMIN: {{ currentAdminId || 'ME' }}</span>
+                    </div>
+                    <button @click="openCreateModal"
+                        class="w-full bg-amber-500 hover:bg-amber-600 text-white font-bold py-3 rounded-xl shadow-lg shadow-amber-900/30 active:scale-[0.98] transition-all flex items-center justify-center gap-2">
+                        立即创建
+                    </button>
+                </div>
+
+                <!-- 筛选栏 (Boss Filters) -->
+                <div class="mb-4">
+                    <div class="flex items-center gap-2 mb-2 px-1">
+                        <h2 class="text-xl font-bold text-white flex items-center gap-2">
+                            <i data-lucide="list-filter" class="w-5 h-5 text-slate-400"></i>
+                            活动列表
+                        </h2>
+                        <span
+                            class="text-xs text-slate-500 bg-slate-800/50 px-2 py-1 rounded-full border border-slate-700">
+                            共 {{ expeditions.length }} 个
+                        </span>
+                    </div>
+
+                    <!-- 横向滚动筛选条 -->
+                    <div class="flex overflow-x-auto gap-2 pb-2 scrollbar-hide mask-gradient-right">
+                        <button @click="changeFilter('全部')"
+                            class="whitespace-nowrap px-4 py-1.5 rounded-full text-sm font-bold transition-all border shrink-0"
+                            :class="currentFilter === '全部' 
+                                ? 'bg-amber-500 border-amber-500 text-white shadow-lg shadow-amber-900/30' 
+                                : 'bg-slate-800/60 border-slate-700 text-slate-400 hover:bg-slate-700 hover:text-slate-200'">
+                            全部
+                        </button>
+                        <button v-for="boss in bossOptions" :key="boss" @click="changeFilter(boss)"
+                            class="whitespace-nowrap px-4 py-1.5 rounded-full text-sm font-medium transition-all border shrink-0"
+                            :class="currentFilter === boss
+                                ? 'bg-blue-600 border-blue-500 text-white shadow-lg shadow-blue-900/30' 
+                                : 'bg-slate-800/60 border-slate-700 text-slate-400 hover:bg-slate-700 hover:text-slate-200'">
+                            {{ boss }}
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 列表为空 -->
+                <div v-if="expeditions.length === 0 && !loading" class="text-center py-20 opacity-60">
+                    <div
+                        class="w-20 h-20 bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-4 border border-slate-700">
+                        <i data-lucide="ghost" class="w-10 h-10 text-slate-500"></i>
+                    </div>
+                    <p class="text-slate-400">
+                        {{ currentFilter === '全部' ? '暂无正在进行的接龙' : `暂无 ${currentFilter} 的接龙` }}
+                    </p>
+                    <p class="text-xs text-slate-600 mt-2">请等待管理员发布</p>
+                </div>
+
+                <!-- 活动卡片列表 -->
+                <div class="grid gap-4">
+                    <div v-for="exp in expeditions" :key="exp.id" @click="selectExpedition(exp)"
+                        class="glass-panel p-5 rounded-2xl cursor-pointer hover:bg-slate-800/60 transition-all group relative overflow-hidden border-l-4"
+                        :class="[
+                            exp.isSticky ? 'border-l-amber-500 bg-amber-500/5' : 'border-l-transparent hover:border-l-slate-600'
+                        ]">
+
+                        <!-- 置顶标记 -->
+                        <div v-if="exp.isSticky" class="absolute top-0 right-0">
+                            <div class="bg-amber-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-bl-lg">置顶
+                            </div>
+                        </div>
+
+                        <div class="flex justify-between items-start mb-3">
+                            <div class="min-w-0 pr-4">
+                                <div class="flex items-center gap-2 mb-1">
+                                    <!-- Boss 标签 -->
+                                    <span v-if="exp.boss"
+                                        class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-300 border border-blue-500/30">
+                                        {{ exp.boss }}
+                                    </span>
+                                    <h3
+                                        class="font-bold text-lg text-white truncate group-hover:text-amber-300 transition-colors">
+                                        {{ exp.title }}
+                                    </h3>
+                                </div>
+                                <div class="flex items-center gap-2 text-xs text-slate-400 mt-1">
+                                    <span
+                                        class="bg-slate-900/50 px-1.5 py-0.5 rounded text-slate-400 border border-slate-700/50">
+                                        发布于 {{ formatTimeWithWeekday(exp.createdAt) }}
+                                    </span>
+                                    <!-- 显示等级限制 -->
+                                    <span v-if="exp.minLevel > 0"
+                                        class="text-red-300 border border-red-500/30 bg-red-900/20 px-1.5 py-0.5 rounded flex items-center gap-1">
+                                        <i data-lucide="shield-alert" class="w-3 h-3"></i>
+                                        Lv.{{ exp.minLevel }}+
+                                    </span>
+                                    <span v-if="exp.status === 'closed'"
+                                        class="text-red-400 border border-red-500/20 bg-red-500/5 px-1.5 py-0.5 rounded">
+                                        已截止
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 进度条 -->
+                        <div class="mb-4">
+                            <div class="flex justify-between text-xs mb-1.5">
+                                <span class="text-slate-400">队伍人数</span>
+                                <span class="font-mono"
+                                    :class="getParticipantCount(exp) >= exp.maxPlayers ? 'text-red-400 font-bold' : 'text-slate-300'">
+                                    {{ getParticipantCount(exp) }} / {{ exp.maxPlayers || '∞' }}
+                                </span>
+                            </div>
+                            <div class="h-1.5 bg-slate-700/50 rounded-full overflow-hidden">
+                                <div class="h-full bg-gradient-to-r from-blue-500 to-cyan-400 transition-all duration-500"
+                                    :style="{ width: getProgressPercent(exp) + '%' }"></div>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center justify-between text-sm text-slate-300">
+                            <div class="flex items-center gap-4">
+                                <span class="flex items-center gap-1.5">
+                                    <i data-lucide="map-pin" class="w-3.5 h-3.5 text-blue-400"></i>
+                                    {{ exp.location }}
+                                </span>
+                                <!-- 使用新的时间格式化函数 -->
+                                <span class="flex items-center gap-1.5 font-medium text-amber-100/90">
+                                    <i data-lucide="clock" class="w-3.5 h-3.5 text-orange-400"></i>
+                                    {{ formatTimeWithWeekday(exp.deadline) }}
+                                </span>
+                            </div>
+
+                            <!-- 我已报名的标记 -->
+                            <div v-if="hasJoined(exp.id)"
+                                class="flex items-center gap-1 text-green-400 text-xs font-medium bg-green-500/10 px-2 py-0.5 rounded-full border border-green-500/20">
+                                <i data-lucide="check" class="w-3 h-3"></i>
+                                已上车
+                            </div>
+                        </div>
+
+                        <!-- 管理员编辑和删除按钮 -->
+                        <div v-if="adminMode"
+                            class="absolute bottom-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-all"
+                            :class="adminMode ? 'opacity-100' : ''">
+                            <!-- 编辑按钮 -->
+                            <button @click.stop="openEditExpeditionModal(exp)"
+                                class="p-2 text-blue-400 hover:text-white bg-slate-900/50 hover:bg-blue-500/50 rounded-lg">
+                                <i data-lucide="pencil" class="w-4 h-4"></i>
+                            </button>
+                            <!-- 删除按钮 -->
+                            <button @click.stop="confirmDeleteExp(exp)"
+                                class="p-2 text-slate-600 hover:text-red-400 bg-slate-900/50 hover:bg-red-500/10 rounded-lg">
+                                <i data-lucide="trash-2" class="w-4 h-4"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div v-if="loading" class="flex justify-center py-8">
+                    <div class="loading-spinner"></div>
+                </div>
+            </div>
+
+            <!-- 详情视图 (DETAIL VIEW) -->
+            <div v-if="viewMode === 'detail' && currentExpedition" class="space-y-6 animate-slide-in-right">
+
+                <div class="flex justify-between items-center">
+                    <button @click="goBack"
+                        class="flex items-center gap-1 text-sm text-slate-400 hover:text-white transition-colors py-2">
+                        <i data-lucide="chevron-left" class="w-5 h-5"></i> 返回列表
+                    </button>
+                    <!-- 详情页的管理员编辑按钮 -->
+                    <button v-if="adminMode" @click="openEditExpeditionModal(currentExpedition)"
+                        class="flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300 bg-blue-500/10 px-3 py-1.5 rounded-lg border border-blue-500/20">
+                        <i data-lucide="pencil" class="w-3.5 h-3.5"></i> 编辑活动
+                    </button>
+                </div>
+
+                <!-- 详情卡片 -->
+                <div class="glass-panel rounded-2xl p-6 relative overflow-hidden">
+                    <div
+                        class="absolute -right-10 -top-10 w-40 h-40 bg-amber-500/10 rounded-full blur-3xl pointer-events-none">
+                    </div>
+
+                    <div class="relative z-10">
+                        <div class="flex justify-between items-start mb-4">
+                            <div>
+                                <span v-if="currentExpedition.boss"
+                                    class="text-xs font-bold px-2 py-0.5 rounded bg-blue-500/20 text-blue-300 border border-blue-500/30 mb-2 inline-block">
+                                    {{ currentExpedition.boss }}
+                                </span>
+                                <h2 class="text-2xl font-bold text-white leading-tight">
+                                    {{ currentExpedition.title }}
+                                </h2>
+                            </div>
+                            <span v-if="currentExpedition.status === 'closed'"
+                                class="shrink-0 bg-red-500 text-white text-xs font-bold px-2 py-1 rounded">已封车</span>
+                        </div>
+
+                        <div class="space-y-3 text-sm text-slate-300">
+                            <div class="flex items-center gap-3 p-2 bg-slate-800/30 rounded-lg">
+                                <i data-lucide="map-pin" class="w-4 h-4 text-blue-400"></i>
+                                <span class="font-medium">{{ currentExpedition.location }}</span>
+                            </div>
+                            <div class="flex items-center gap-3 p-2 bg-slate-800/30 rounded-lg">
+                                <i data-lucide="clock" class="w-4 h-4 text-orange-400"></i>
+                                <!-- 详情页使用完整的时间格式 -->
+                                <span class="font-bold text-amber-100 tracking-wide">
+                                    截止: {{ formatTimeWithWeekday(currentExpedition.deadline) }}
+                                </span>
+                            </div>
+
+                            <!-- 详情页等级限制显示 -->
+                            <div v-if="currentExpedition.minLevel > 0"
+                                class="flex items-center gap-3 p-2 bg-red-900/10 border border-red-500/20 rounded-lg text-red-200">
+                                <i data-lucide="shield-alert" class="w-4 h-4 text-red-400"></i>
+                                <span class="font-bold">最低等级要求: Lv.{{ currentExpedition.minLevel }}+</span>
+                            </div>
+
+                            <div
+                                class="p-3 bg-amber-500/5 border border-amber-500/10 rounded-lg text-amber-100/90 text-sm leading-relaxed">
+                                <div class="flex items-center gap-2 mb-1 opacity-70 text-xs uppercase font-bold">
+                                    <i data-lucide="file-text" class="w-3 h-3"></i> 备注信息
+                                </div>
+                                {{ currentExpedition.desc || '暂无备注' }}
+                            </div>
+                        </div>
+
+                        <div class="mt-5 grid grid-cols-2 gap-3">
+                            <button @click="copyToClipboard"
+                                class="col-span-2 bg-slate-700/50 hover:bg-slate-700 border border-slate-600/50 text-slate-200 py-2.5 rounded-xl text-sm font-medium flex items-center justify-center gap-2 transition-all active:scale-[0.98]">
+                                <i data-lucide="copy" class="w-4 h-4"></i> 复制完整接龙文本
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 队伍名单 -->
+                <div class="space-y-6 pb-20">
+                    <!-- 攻坚组 -->
+                    <div>
+                        <div class="flex items-center justify-between mb-3 px-2">
+                            <h3 class="font-bold text-blue-200 text-sm flex items-center gap-2">
+                                <i data-lucide="swords" class="w-4 h-4 text-blue-400"></i>
+                                攻坚打手 ({{ attackers.length }})
+                            </h3>
+                            <span class="text-xs text-slate-500">{{ currentExpedition.maxPlayers ? `上限
+                                ${currentExpedition.maxPlayers} 人` : '无限制' }}</span>
+                        </div>
+
+                        <div class="space-y-2">
+                            <div v-if="attackers.length === 0"
+                                class="text-center py-6 border border-dashed border-slate-800 rounded-xl text-slate-600 text-sm">
+                                虚位以待，等待勇士加入...
+                            </div>
+
+                            <div v-for="(p, index) in attackers" :key="p.id"
+                                class="bg-slate-800/40 border-l-4 p-3 rounded-r-xl flex items-center justify-between group transition-all"
+                                :class="[
+                                    isMe(p) ? 'bg-blue-500/10' : '',
+                                    getJobClass(p.job)
+                                ]">
+                                <div class="flex items-center gap-3 overflow-hidden">
+                                    <span class="text-slate-500 font-mono text-sm w-4 shrink-0">{{ index + 1 }}</span>
+                                    <div class="min-w-0">
+                                        <div class="flex items-center gap-2">
+                                            <span class="font-bold text-slate-200 truncate">{{ p.name }}</span>
+                                            <span v-if="isMe(p)"
+                                                class="text-[10px] bg-blue-500 text-white px-1 rounded font-bold">ME</span>
+                                        </div>
+                                        <div class="text-xs text-slate-400 flex items-center gap-2 mt-0.5">
+                                            <span class="text-blue-300">{{ p.job }}</span>
+                                            <span class="w-1 h-1 bg-slate-600 rounded-full"></span>
+                                            <span>Lv.{{ p.level }}</span>
+                                            <span v-if="p.note" class="text-slate-500">• {{ p.note }}</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div v-if="canEdit(p)"
+                                    class="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <button @click="editParticipant(p)"
+                                        class="p-1.5 text-slate-400 hover:text-blue-400 bg-slate-900/50 rounded-lg"><i
+                                            data-lucide="edit-2" class="w-3.5 h-3.5"></i></button>
+                                    <button @click="deleteParticipant(p)"
+                                        class="p-1.5 text-slate-400 hover:text-red-400 bg-slate-900/50 rounded-lg"><i
+                                            data-lucide="x" class="w-3.5 h-3.5"></i></button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 老板位 -->
+                    <div v-if="bosses.length > 0 || viewMode === 'detail'">
+                        <div class="flex items-center justify-between mb-3 px-2 mt-6 border-t border-slate-800 pt-6">
+                            <h3 class="font-bold text-amber-200 text-sm flex items-center gap-2">
+                                <i data-lucide="crown" class="w-4 h-4 text-amber-400"></i>
+                                老板 / 包车 ({{ bosses.length }})
+                            </h3>
+                        </div>
+
+                        <div class="space-y-2">
+                            <div v-if="bosses.length === 0" class="text-center py-4 text-slate-600 text-xs">
+                                暂无老板
+                            </div>
+
+                            <div v-for="(p, index) in bosses" :key="p.id"
+                                class="bg-slate-800/40 border-l-4 border-l-amber-500 p-3 rounded-r-xl flex items-center justify-between group"
+                                :class="isMe(p) ? 'bg-amber-500/10' : ''">
+                                <div class="flex items-center gap-3 overflow-hidden">
+                                    <span class="text-slate-500 font-mono text-sm w-4 shrink-0">{{ index + 1 }}</span>
+                                    <div class="min-w-0">
+                                        <div class="flex items-center gap-2">
+                                            <span class="font-bold text-amber-200 truncate">{{ p.name }}</span>
+                                            <span v-if="isMe(p)"
+                                                class="text-[10px] bg-amber-500 text-white px-1 rounded font-bold">ME</span>
+                                        </div>
+                                        <div class="text-xs text-slate-400 mt-0.5">
+                                            {{ p.note || '老板大气' }}
+                                        </div>
+                                    </div>
+                                </div>
+                                <div v-if="canEdit(p)"
+                                    class="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <button @click="editParticipant(p)"
+                                        class="p-1.5 text-slate-400 hover:text-blue-400 bg-slate-900/50 rounded-lg"><i
+                                            data-lucide="edit-2" class="w-3.5 h-3.5"></i></button>
+                                    <button @click="deleteParticipant(p)"
+                                        class="p-1.5 text-slate-400 hover:text-red-400 bg-slate-900/50 rounded-lg"><i
+                                            data-lucide="x" class="w-3.5 h-3.5"></i></button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- 底部悬浮按钮 (Join Action) -->
+        <div v-if="viewMode === 'detail' && !showJoinModal && currentExpedition && currentExpedition.status !== 'closed'"
+            class="fixed bottom-6 inset-x-0 flex justify-center z-30 pointer-events-none animate-slide-up">
+            <button @click="openJoinModal" :disabled="!adminMode && userHasJoined"
+                class="pointer-events-auto shadow-2xl shadow-amber-900/40 flex items-center gap-2 px-8 py-3.5 rounded-full font-bold transition-all duration-300 hover:-translate-y-1 active:scale-95 text-sm md:text-base border border-white/10"
+                :class="(!adminMode && userHasJoined) 
+                    ? 'bg-slate-800 text-slate-400 cursor-not-allowed border-slate-700' 
+                    : 'bg-gradient-to-r from-amber-500 to-orange-600 text-white hover:shadow-orange-500/30'">
+                <i :data-lucide="(!adminMode && userHasJoined) ? 'check-circle' : 'user-plus'" class="w-5 h-5"></i>
+                <span>{{ (!adminMode && userHasJoined) ? '已成功上车' : (adminMode ? '添加成员' : '我要上车') }}</span>
+            </button>
+        </div>
+
+        <!-- 模态框: 创建/编辑活动 -->
+        <div v-if="showCreateModal" class="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4">
+            <div class="absolute inset-0 bg-slate-950/80 backdrop-blur-sm transition-opacity"
+                @click="showCreateModal = false"></div>
+            <div
+                class="relative bg-slate-900 w-full max-w-lg sm:rounded-2xl rounded-t-2xl border border-white/10 shadow-2xl p-6 animate-slide-up max-h-[90vh] overflow-y-auto">
+                <div class="flex justify-between items-center mb-6">
+                    <!-- 动态标题 -->
+                    <h3 class="text-xl font-bold text-white">{{ isEditingExpedition ? '编辑活动' : '发布新活动' }}</h3>
+                    <button @click="showCreateModal = false" class="text-slate-500 hover:text-white"><i data-lucide="x"
+                            class="w-6 h-6"></i></button>
+                </div>
+                <form @submit.prevent="handleCreateExpedition" class="space-y-4">
+                    <div class="space-y-2">
+                        <label class="text-xs text-slate-400 font-bold ml-1">活动标题</label>
+                        <input v-model="createForm.title" placeholder="如: 扎昆/黑龙 接龙" required
+                            class="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-white focus:border-amber-500 focus:outline-none transition-colors">
+                    </div>
+
+                    <!-- 新增 Boss 选择 -->
+                    <div class="space-y-2">
+                        <label class="text-xs text-slate-400 font-bold ml-1">选择 Boss 副本</label>
+                        <div class="relative">
+                            <select v-model="createForm.boss"
+                                class="w-full appearance-none bg-slate-950 border border-slate-700 rounded-xl p-3 text-white focus:border-amber-500 focus:outline-none transition-colors">
+                                <option value="" disabled>请选择一个 Boss</option>
+                                <option v-for="b in bossOptions" :value="b" :key="b">{{ b }}</option>
+                            </select>
+                            <i data-lucide="chevron-down"
+                                class="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none"></i>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-3">
+                        <div class="space-y-2">
+                            <label class="text-xs text-slate-400 font-bold ml-1">地点/线路</label>
+                            <input v-model="createForm.location" placeholder="如: 1线 雪域" required
+                                class="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-white focus:border-amber-500 focus:outline-none transition-colors">
+                        </div>
+                        <div class="space-y-2">
+                            <label class="text-xs text-slate-400 font-bold ml-1">截止时间</label>
+                            <!-- 
+                                使用 type="datetime-local" 
+                                点击后会弹出原生的日期时间选择器，包括年月日和时间
+                            -->
+                            <input type="datetime-local" v-model="createForm.deadline" required
+                                class="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-white focus:border-amber-500 focus:outline-none transition-colors appearance-none relative">
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div class="space-y-2">
+                            <label class="text-xs text-slate-400 font-bold ml-1">人数上限 (选填)</label>
+                            <input v-model.number="createForm.maxPlayers" type="number" placeholder="默认不限"
+                                class="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-white focus:border-amber-500 focus:outline-none transition-colors">
+                        </div>
+                        <div class="space-y-2">
+                            <label class="text-xs text-slate-400 font-bold ml-1">
+                                最低等级限制 <span v-if="createForm.enableLevelLimit" class="text-amber-500">(已开启)</span>
+                            </label>
+                            <div class="relative">
+                                <input v-if="createForm.enableLevelLimit" v-model.number="createForm.minLevel"
+                                    type="number" placeholder="输入最低等级"
+                                    class="w-full bg-slate-950 border border-amber-500/50 rounded-xl p-3 text-white focus:border-amber-500 focus:outline-none transition-colors animate-fade-in">
+                                <div v-else @click="createForm.enableLevelLimit = true"
+                                    class="w-full bg-slate-950 border border-slate-700 border-dashed rounded-xl p-3 text-slate-500 text-sm cursor-pointer hover:border-slate-500 hover:text-slate-400 transition-all flex items-center justify-between">
+                                    <span>无限制</span>
+                                    <span class="text-xs bg-slate-800 px-2 py-1 rounded">点击开启</span>
+                                </div>
+                                <button v-if="createForm.enableLevelLimit"
+                                    @click="createForm.enableLevelLimit = false; createForm.minLevel = null"
+                                    type="button"
+                                    class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-red-400">
+                                    <i data-lucide="x-circle" class="w-5 h-5"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center gap-2 pt-2 px-1">
+                        <input type="checkbox" id="sticky" v-model="createForm.isSticky"
+                            class="w-5 h-5 rounded border-slate-600 bg-slate-800 text-amber-500 focus:ring-amber-500">
+                        <label for="sticky" class="text-sm text-slate-300">置顶此活动</label>
+                    </div>
+
+                    <div class="space-y-2">
+                        <label class="text-xs text-slate-400 font-bold ml-1">备注说明</label>
+                        <textarea v-model="createForm.desc" rows="3" placeholder="填写集合地点、特殊要求等"
+                            class="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-white focus:border-amber-500 focus:outline-none resize-none transition-colors"></textarea>
+                    </div>
+                    <div class="pt-2">
+                        <button type="submit"
+                            class="w-full bg-amber-500 hover:bg-amber-600 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-amber-900/20 active:scale-[0.98] transition-all">
+                            {{ isEditingExpedition ? '保存修改' : '发布活动' }}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- 模态框: 报名/编辑 -->
+        <div v-if="showJoinModal" class="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4">
+            <div class="absolute inset-0 bg-slate-950/80 backdrop-blur-sm transition-opacity" @click="closeJoinModal">
+            </div>
+            <div
+                class="relative bg-slate-900 w-full max-w-lg sm:rounded-2xl rounded-t-2xl border border-white/10 shadow-2xl p-6 animate-slide-up max-h-[90vh] overflow-y-auto">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="text-xl font-bold text-white flex items-center gap-2">
+                        <span class="w-1.5 h-6 bg-amber-500 rounded-full"></span>
+                        {{ isEditMode ? '修改信息' : '填写报名信息' }}
+                    </h3>
+                    <button @click="closeJoinModal" class="text-slate-500 hover:text-white"><i data-lucide="x"
+                            class="w-6 h-6"></i></button>
+                </div>
+
+                <form @submit.prevent="handleJoinSubmit" class="space-y-5">
+                    <!-- 角色选择 -->
+                    <div class="grid grid-cols-2 gap-3">
+                        <button type="button" @click="joinForm.role = 'attacker'"
+                            class="p-3 rounded-xl border-2 flex items-center justify-center gap-2 transition-all relative overflow-hidden"
+                            :class="joinForm.role === 'attacker' ? 'border-blue-500 bg-blue-500/10 text-blue-100' : 'border-slate-700 bg-slate-800 text-slate-400 opacity-60'">
+                            <i data-lucide="sword" class="w-5 h-5"></i>
+                            <span class="font-bold">我是打手</span>
+                            <div v-if="joinForm.role === 'attacker'"
+                                class="absolute right-0 top-0 bg-blue-500 text-white text-[10px] px-1.5 rounded-bl">✓
+                            </div>
+                        </button>
+                        <button type="button" @click="joinForm.role = 'boss'"
+                            class="p-3 rounded-xl border-2 flex items-center justify-center gap-2 transition-all relative overflow-hidden"
+                            :class="joinForm.role === 'boss' ? 'border-amber-500 bg-amber-500/10 text-amber-100' : 'border-slate-700 bg-slate-800 text-slate-400 opacity-60'">
+                            <i data-lucide="crown" class="w-5 h-5"></i>
+                            <span class="font-bold">老板/包车</span>
+                            <div v-if="joinForm.role === 'boss'"
+                                class="absolute right-0 top-0 bg-amber-500 text-white text-[10px] px-1.5 rounded-bl">✓
+                            </div>
+                        </button>
+                    </div>
+
+                    <div class="space-y-4">
+                        <div class="space-y-1.5">
+                            <label class="text-xs text-slate-400 font-bold ml-1">游戏角色名 (ID)</label>
+                            <input v-model="joinForm.name" type="text" placeholder="请填写真实游戏ID" required
+                                class="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 text-white focus:border-amber-500 focus:outline-none transition-colors">
+                        </div>
+
+                        <div v-if="joinForm.role === 'attacker'" class="grid grid-cols-5 gap-3 animate-fade-in">
+                            <div class="col-span-3 space-y-1.5">
+                                <label class="text-xs text-slate-400 font-bold ml-1">职业</label>
+                                <div class="relative">
+                                    <select v-model="joinForm.job"
+                                        class="w-full appearance-none bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 text-white focus:border-amber-500 focus:outline-none">
+                                        <option value="" disabled>选择职业</option>
+                                        <optgroup v-for="g in jobsList" :label="g.group" :key="g.group"
+                                            class="bg-slate-900">
+                                            <option v-for="j in g.jobs" :value="j" :key="j">{{ j }}</option>
+                                        </optgroup>
+                                    </select>
+                                    <i data-lucide="chevron-down"
+                                        class="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none"></i>
+                                </div>
+                            </div>
+                            <div class="col-span-2 space-y-1.5">
+                                <label class="text-xs text-slate-400 font-bold ml-1">等级</label>
+                                <input v-model="joinForm.level" type="number" placeholder="Lv"
+                                    class="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 text-white focus:border-amber-500 focus:outline-none text-center">
+                            </div>
+                        </div>
+
+                        <div class="space-y-1.5">
+                            <label class="text-xs text-slate-400 font-bold ml-1">{{ joinForm.role === 'attacker' ?
+                                '需求/备注' : '需求物品/备注' }}</label>
+                            <input v-model="joinForm.note" type="text"
+                                :placeholder="joinForm.role === 'attacker' ? '例如: 需要火' : '例如: 包头盔'"
+                                class="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 text-white focus:border-amber-500 focus:outline-none">
+                        </div>
+                    </div>
+
+                    <button type="submit"
+                        class="w-full bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-blue-900/20 active:scale-[0.98] transition-all mt-4">
+                        {{ isEditMode ? '保存修改' : '确认上车' }}
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- 模态框: 系统设置 (管理员) -->
+        <div v-if="showSettings" class="fixed inset-0 z-[60] flex items-center justify-center p-4">
+            <div class="absolute inset-0 bg-slate-950/90 backdrop-blur-md" @click="showSettings = false"></div>
+            <div
+                class="relative bg-slate-900 w-full max-w-md rounded-2xl border border-white/10 shadow-2xl overflow-hidden animate-slide-up">
+
+                <div class="flex items-center justify-between p-4 border-b border-slate-800 bg-slate-800/50">
+                    <h3 class="font-bold text-white flex items-center gap-2">
+                        <i data-lucide="settings-2" class="w-5 h-5 text-amber-500"></i>
+                        管理员控制台
+                    </h3>
+                    <button @click="showSettings = false" class="text-slate-400 hover:text-white"><i data-lucide="x"
+                            class="w-5 h-5"></i></button>
+                </div>
+
+                <div class="p-6 space-y-6">
+
+
+                    <!-- Tab 1: 全局公告 -->
+                    <div class="space-y-2">
+                        <label class="text-xs font-bold text-amber-500 uppercase">全局滚动公告</label>
+                        <div class="flex gap-2">
+                            <input v-model="settingsForm.announcement" placeholder="输入全服公告内容..."
+                                class="flex-1 bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:border-amber-500 outline-none">
+                            <button @click="updateConfig('announcement')"
+                                class="bg-amber-600 text-white px-3 py-2 rounded-lg text-sm font-bold hover:bg-amber-500">发布</button>
+                        </div>
+                    </div>
+
+                    <hr class="border-slate-800">
+
+                    <!-- Tab 2: 密码管理 (替代 ID 管理) -->
+                    <div class="space-y-2">
+                        <label class="text-xs font-bold text-green-500 uppercase flex justify-between items-center">
+                            修改管理员密码
+                            <span
+                                class="text-[10px] bg-slate-800 px-1.5 rounded normal-case text-slate-400">留空则不修改</span>
+                        </label>
+                        <div class="space-y-2">
+                            <input type="password" v-model="settingsForm.newPassword" placeholder="输入新密码..."
+                                class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:border-green-500 outline-none">
+                            <button @click="updateConfig('password')"
+                                class="w-full bg-green-600 hover:bg-green-500 text-white px-3 py-2 rounded-lg text-sm font-bold transition-colors">
+                                保存新密码
+                            </button>
+                        </div>
+                        <p class="text-[10px] text-slate-600">修改后请牢记新密码，丢失后需要在 LeanCloud 后台手动修改。</p>
+                    </div>
+
+                    <hr class="border-slate-800">
+
+                    <!-- Tab 4: 权限修复 (新功能) -->
+                    <div class="space-y-2">
+                        <label class="text-xs font-bold text-slate-500 uppercase">紧急维护</label>
+                        <div class="bg-slate-950 rounded-lg p-3 border border-slate-800 space-y-3">
+                            <div>
+                                <p class="text-[10px] text-amber-500/80 mb-1">功能：一键将所有活动设置为“公开读写”。</p>
+                                <p class="text-[10px] text-slate-500">解决管理员无法编辑其他人创建的活动的问题。</p>
+                            </div>
+                            <button @click="fixAllPermissions" :disabled="fixing"
+                                class="w-full bg-amber-500/10 hover:bg-amber-500/20 text-amber-500 border border-amber-500/20 py-2 rounded-lg text-sm transition-colors flex items-center justify-center gap-2">
+                                <i data-lucide="shield-check" class="w-4 h-4"></i>
+                                {{ fixing ? '正在修复...' : '一键修复全服权限' }}
+                            </button>
+
+                            <div class="h-px bg-slate-800 my-2"></div>
+
+                            <p class="text-xs text-slate-400 mb-1">清理 7 天前的过期数据。</p>
+                            <button @click="cleanupOldData" :disabled="cleaning"
+                                class="w-full bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 py-2 rounded-lg text-sm transition-colors flex items-center justify-center gap-2">
+                                <i data-lucide="trash" class="w-4 h-4"></i>
+                                {{ cleaning ? '清理中...' : '清理过期数据' }}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 模态框: 管理员登录 (新版 - 手动输入 ID) -->
+        <div v-if="showAdminLogin"
+            class="fixed inset-0 z-[70] bg-black/80 backdrop-blur-sm flex items-center justify-center p-6">
+            <div
+                class="bg-slate-900 border border-slate-700 p-6 rounded-2xl w-full max-w-xs text-center shadow-2xl animate-slide-up relative overflow-hidden">
+
+                <!-- 背景装饰 -->
+                <div class="absolute -top-10 -right-10 w-32 h-32 bg-amber-500/10 rounded-full blur-2xl"></div>
+
+                <div
+                    class="w-12 h-12 bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-4 relative z-10">
+                    <i data-lucide="shield-check" class="w-6 h-6 text-amber-500"></i>
+                </div>
+                <h3 class="text-white font-bold mb-4 relative z-10">管理员登录</h3>
+
+                <!-- 密码输入区 -->
+                <div class="relative z-10 mb-4">
+                    <input type="password" v-model="loginPassword"
+                        class="w-full bg-slate-950 border border-slate-600 rounded-xl p-3 text-center text-white mb-2 tracking-wide text-sm focus:border-amber-500 outline-none transition-colors"
+                        placeholder="请输入管理员密码" @keyup.enter="handleAdminLogin">
+                </div>
+
+                <div class="flex gap-3 relative z-10">
+                    <button @click="showAdminLogin = false"
+                        class="flex-1 py-2.5 text-slate-400 hover:bg-slate-800 rounded-xl transition-colors text-sm font-medium">取消</button>
+                    <button @click="handleAdminLogin"
+                        class="flex-1 py-2.5 bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white rounded-xl font-bold shadow-lg shadow-amber-900/20 transition-all text-sm flex items-center justify-center gap-1">
+                        <i data-lucide="key-round" class="w-4 h-4"></i>
+                        验证密码
+                    </button>
+                </div>
+
+                <!-- 提示信息 -->
+                <div class="mt-4 pt-4 border-t border-slate-800 text-[10px] text-slate-400 relative z-10 text-center">
+                    <i data-lucide="info" class="w-3 h-3 inline mr-1"></i>
+                    请联系管理员获取密码
+                </div>
+            </div>
+        </div>
+
+        <!-- 全局 Toast -->
+        <div v-if="toast.show" class="fixed top-20 left-1/2 -translate-x-1/2 z-[80] animate-fade-in">
+            <div
+                class="bg-slate-800/90 backdrop-blur border border-slate-700 text-white px-5 py-2.5 rounded-full shadow-xl flex items-center gap-2 text-sm font-medium">
+                <i v-if="toast.type === 'success'" data-lucide="check-circle" class="w-4 h-4 text-green-400"></i>
+                <i v-else-if="toast.type === 'error'" data-lucide="alert-circle" class="w-4 h-4 text-red-400"></i>
+                <i v-else data-lucide="info" class="w-4 h-4 text-blue-400"></i>
+                {{ toast.msg }}
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        const { createApp, ref, computed, onMounted, watch, nextTick } = Vue;
+
+        // LeanCloud Configuration
+        const LC_APP_ID = "42qCmBg8SuamZJFhwUvuqUKx-MdYXbMMI";
+        const LC_APP_KEY = "gnAt7xhV9bD8fFRg7SgEY0ll";
+        const LC_SERVER_URL = "https://42qcmbg8.api.lncldglobal.com";
+
+        // Constants
+        const CLASS_EXPEDITION = 'Expedition';
+        const CLASS_PARTICIPANT = 'MapleExpeditionV2'; // Reuse existing class to keep data
+        const CLASS_CONFIG = 'ExpeditionConfig';
+
+        const JOB_GROUPS = [
+            { group: '战士系', jobs: ['英雄', '龙骑士/黑骑士', '圣骑士', '战士'] },
+            { group: '法师系', jobs: ['主教/祭司', '冰雷', '火毒', '法师'] },
+            { group: '弓箭手系', jobs: ['箭神', '神射手', '弓手'] },
+            { group: '飞侠系', jobs: ['隐士/标飞', '侠客/刀飞', '飞侠'] },
+            { group: '海盗系', jobs: ['冲锋队长', '船长', '海盗'] },
+            { group: '特殊/新手', jobs: ['战神', '新手', '其他'] }
+        ];
+
+        // Boss Options
+        const BOSS_OPTIONS = ['扎昆', '黑龙', '品克缤', '希拉', '鲁塔比斯', '斯乌', '戴米安', '路西德', '威尔', '真希拉', '卡洛斯', '卡琳', '日常', '其他'];
+
+        createApp({
+            setup() {
+                // State
+                const currentUser = ref(null);
+                const isMockUser = ref(false); // Track if we are using a fake local user
+                const viewMode = ref('list');
+                const loading = ref(true);
+                const cleaning = ref(false);
+                const fixing = ref(false); // 新增状态
+                const configError = ref(false);
+                const toast = ref({ show: false, msg: '', type: 'info' });
+
+                // Data
+                const expeditions = ref([]);
+                const currentExpedition = ref(null);
+                const participants = ref([]);
+                const jobsList = JOB_GROUPS;
+                const bossOptions = BOSS_OPTIONS;
+
+                // Filter State
+                const currentFilter = ref('全部');
+
+                // Admin & Config
+                const adminMode = ref(false);
+                const showAdminLogin = ref(false);
+                const showSettings = ref(false);
+                const adminPassword = ref(''); // Store admin password from DB
+                const globalNotice = ref('');
+
+                // Modals & Forms
+                const showCreateModal = ref(false);
+                const showJoinModal = ref(false);
+                const isEditMode = ref(false);
+                const editId = ref(null);
+
+                // Expedition Create/Edit
+                const isEditingExpedition = ref(false);
+                const editingExpeditionId = ref(null);
+                const createForm = ref({ title: '', boss: '', location: '', deadline: '', desc: '', maxPlayers: null, isSticky: false, enableLevelLimit: false, minLevel: null });
+
+                const joinForm = ref({ role: 'attacker', name: '', job: '', level: '', note: '' });
+                // Settings form for password and announcement
+                const settingsForm = ref({ newPassword: '', announcement: '' });
+
+                // Login Input (Reusing variable name for simplicity)
+                const loginPassword = ref('');
+
+                // Lifecycle
+                onMounted(async () => {
+                    initLeanCloud();
+                    await initUser();
+                    await fetchConfig();
+                    await fetchExpeditions();
+
+                    // Auto Refresh
+                    setInterval(() => {
+                        if (!showJoinModal.value && !showCreateModal.value && !showSettings.value) {
+                            if (viewMode.value === 'list') fetchExpeditions(true);
+                            else if (viewMode.value === 'detail' && currentExpedition.value) fetchParticipants(true);
+                        }
+                    }, 8000);
+
+                    nextTick(() => lucide.createIcons());
+                });
+
+                watch([viewMode, expeditions, participants, showCreateModal, showJoinModal, showSettings], () => {
+                    nextTick(() => lucide.createIcons());
+                });
+
+                // Init
+                const initLeanCloud = () => {
+                    if (!LC_APP_ID || !LC_APP_KEY) {
+                        configError.value = true;
+                        return;
+                    }
+                    try {
+                        if (!AV.applicationId) {
+                            AV.init({ appId: LC_APP_ID, appKey: LC_APP_KEY, serverURLs: LC_SERVER_URL });
+                        }
+                    } catch (e) { console.error("Init Error", e); }
+                };
+
+                const initUser = async () => {
+                    try {
+                        let user = AV.User.current();
+                        if (user) {
+                            try {
+                                // Validate session
+                                await user.fetch();
+                            } catch (e) {
+                                console.warn("Session expired/invalid, logging out...", e);
+                                try {
+                                    await AV.User.logOut();
+                                } catch (logoutErr) {
+                                    console.warn("Logout failed, clearing anyway");
+                                }
+                                user = null;
+                            }
+                        }
+
+                        if (!user) {
+                            console.log("Attempting anonymous login...");
+                            try {
+                                user = await AV.User.loginAnonymously();
+                            } catch (loginErr) {
+                                // Fallback to local mock user for ANY login failure (403, network, etc)
+                                console.warn("Anonymous login failed, using local mode:", loginErr.code);
+                                const mockId = localStorage.getItem('maple_mock_id') || 'guest_' + Math.random().toString(36).substr(2, 9);
+                                localStorage.setItem('maple_mock_id', mockId);
+
+                                user = {
+                                    id: mockId,
+                                    get: (key) => key === 'objectId' ? mockId : null,
+                                    toJSON: () => ({ objectId: mockId }),
+                                    authenticated: () => false
+                                };
+                                isMockUser.value = true;
+                            }
+                        }
+                        currentUser.value = user;
+                    } catch (e) {
+                        // Final fallback: don't throw, just create mock user
+                        console.error("Auth error, using fallback:", e);
+                        const mockId = localStorage.getItem('maple_mock_id') || 'guest_' + Math.random().toString(36).substr(2, 9);
+                        localStorage.setItem('maple_mock_id', mockId);
+
+                        currentUser.value = {
+                            id: mockId,
+                            get: (key) => key === 'objectId' ? mockId : null,
+                            toJSON: () => ({ objectId: mockId }),
+                            authenticated: () => false
+                        };
+                        isMockUser.value = true;
+                    }
+                };
+
+                const fetchConfig = async () => {
+                    try {
+                        console.log('[DEBUG] fetchConfig - Starting...');
+                        const q = new AV.Query(CLASS_CONFIG);
+                        q.descending('createdAt'); // Ensure we get the latest config
+                        const conf = await q.first();
+                        console.log('[DEBUG] fetchConfig - conf object:', conf);
+                        console.log('[DEBUG] fetchConfig - conf exists?', !!conf);
+
+                        if (conf) {
+                            // Load password and announcement from DB
+                            const pwd = conf.get('adminPassword');
+                            const notice = conf.get('announcement');
+
+                            console.log('[DEBUG] Raw adminPassword from DB:', pwd);
+                            console.log('[DEBUG] Raw announcement from DB:', notice);
+                            console.log('[DEBUG] adminPassword type:', typeof pwd);
+
+                            adminPassword.value = pwd || '';
+                            globalNotice.value = notice || '';
+
+                            console.log('[DEBUG] adminPassword.value after assignment:', adminPassword.value);
+                            console.log('[DEBUG] globalNotice.value after assignment:', globalNotice.value);
+
+                            // Pre-fill settings form
+                            settingsForm.value.announcement = globalNotice.value;
+                            // Don't pre-fill password for security
+                        } else {
+                            console.warn('[DEBUG] No config object found in ExpeditionConfig table');
+                        }
+                    } catch (e) {
+                        console.error('[DEBUG] fetchConfig error:', e);
+                        if (e.code !== 101 && e.code !== 404 && !e.message?.includes("Class or object doesn't exists")) {
+                            console.warn("Config fetch error:", e);
+                        }
+                    }
+                };
+
+                // Data Fetching
+                const fetchExpeditions = async (silent = false) => {
+                    if (!silent) loading.value = true;
+                    try {
+                        const q = new AV.Query(CLASS_EXPEDITION);
+
+                        // Apply Boss Filter
+                        if (currentFilter.value !== '全部') {
+                            q.equalTo('boss', currentFilter.value);
+                        }
+
+                        q.descending('isSticky'); // Sticky first
+                        q.addDescending('createdAt'); // Then new ones
+                        q.limit(30);
+                        const results = await q.find();
+                        // Need to fetch participant counts for list view efficiency? 
+                        // For now, let's keep it simple. If scaling, we should use Cloud Code counters.
+                        // Here we just fetch list. We'll load participants lazily or add a 'count' field later.
+                        // For this version, let's just show the events. 
+                        // Optimization: We will load ALL participants for these 30 events in one query to show counts locally.
+                        const exps = results.map(o => ({ id: o.id, ...o.toJSON() }));
+
+                        if (exps.length > 0) {
+                            const eventIds = exps.map(e => e.id);
+                            const pq = new AV.Query(CLASS_PARTICIPANT);
+                            pq.containedIn('expeditionId', eventIds);
+                            pq.limit(1000);
+                            const parts = await pq.find();
+                            // Attach counts directly to expedition objects for UI
+                            const partsData = parts.map(p => p.toJSON());
+                            exps.forEach(e => {
+                                e._participants = partsData.filter(p => p.expeditionId === e.objectId);
+                            });
+                        }
+                        expeditions.value = exps;
+                    } catch (e) {
+                        // FIX: Handle "Class not found" error gracefully
+                        if (e.code === 404 || e.code === 101 || e.message?.includes("Class or object doesn't exists")) {
+                            console.log("Database classes not initialized yet. Waiting for first event creation.");
+                            expeditions.value = [];
+                        } else {
+                            console.error(e);
+                        }
+                    }
+                    loading.value = false;
+                };
+
+                const fetchParticipants = async (silent = false) => {
+                    if (!currentExpedition.value) return;
+                    if (!silent) loading.value = true;
+                    try {
+                        const q = new AV.Query(CLASS_PARTICIPANT);
+                        q.equalTo('expeditionId', currentExpedition.value.id);
+                        q.ascending('createdAt');
+                        q.limit(200);
+                        const results = await q.find();
+                        participants.value = results.map(o => ({ id: o.id, ...o.toJSON() }));
+                    } catch (e) {
+                        if (e.code === 404 || e.code === 101 || e.message?.includes("Class or object doesn't exists")) {
+                            participants.value = [];
+                        }
+                    }
+                    loading.value = false;
+                };
+
+                // Actions
+                const selectExpedition = async (exp) => {
+                    currentExpedition.value = exp;
+                    viewMode.value = 'detail';
+                    participants.value = []; // clear previous
+                    await fetchParticipants();
+                };
+
+                const goBack = () => {
+                    viewMode.value = 'list';
+                    currentExpedition.value = null;
+                    fetchExpeditions(true); // silent refresh
+                };
+
+                const refreshData = () => {
+                    if (viewMode.value === 'list') fetchExpeditions();
+                    else fetchParticipants();
+                    showToast('数据已刷新', 'success');
+                };
+
+                // Change Filter
+                const changeFilter = (boss) => {
+                    if (currentFilter.value === boss) return;
+                    currentFilter.value = boss;
+                    fetchExpeditions(); // Reload list with filter
+                };
+
+                // Create / Edit Expedition Logic
+                const openCreateModal = () => {
+                    isEditingExpedition.value = false;
+                    editingExpeditionId.value = null;
+                    createForm.value = { title: '', boss: '', location: '', deadline: '', desc: '', maxPlayers: null, isSticky: false, enableLevelLimit: false, minLevel: null };
+                    showCreateModal.value = true;
+                };
+
+                const openEditExpeditionModal = (exp) => {
+                    isEditingExpedition.value = true;
+                    editingExpeditionId.value = exp.id;
+
+                    // Format Date for Input (YYYY-MM-DDThh:mm)
+                    let dateStr = '';
+                    try {
+                        if (exp.deadline) {
+                            const d = new Date(exp.deadline);
+                            const pad = (n) => n.toString().padStart(2, '0');
+                            dateStr = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+                        }
+                    } catch (e) { }
+
+                    createForm.value = {
+                        title: exp.title,
+                        boss: exp.boss || '',
+                        location: exp.location,
+                        deadline: dateStr,
+                        desc: exp.desc,
+                        maxPlayers: exp.maxPlayers,
+                        isSticky: exp.isSticky,
+                        enableLevelLimit: !!(exp.minLevel && exp.minLevel > 0),
+                        minLevel: exp.minLevel || null
+                    };
+                    showCreateModal.value = true;
+                };
+
+                const handleCreateExpedition = async () => {
+                    // 1. 安全检查：确保当前有用户身份
+                    if (!currentUser.value) {
+                        await initUser(); // 尝试重新登录
+                        if (!currentUser.value) {
+                            showToast('身份验证失败，请刷新页面重试', 'error');
+                            return;
+                        }
+                    }
+
+                    try {
+                        let o;
+                        if (isEditingExpedition.value && editingExpeditionId.value) {
+                            // Update existing
+                            o = AV.Object.createWithoutData(CLASS_EXPEDITION, editingExpeditionId.value);
+                        } else {
+                            // Create new
+                            const Obj = AV.Object.extend(CLASS_EXPEDITION);
+                            o = new Obj();
+
+                            // Set owner to current user
+                            o.set('ownerId', currentUser.value.id);
+
+                            o.set('status', 'open'); // open, closed
+
+                            const acl = new AV.ACL();
+                            acl.setPublicReadAccess(true);
+                            // Set Public Write Access to true to allow Admins (who are different users) to edit/delete
+                            acl.setPublicWriteAccess(true);
+                            o.setACL(acl);
+                        }
+
+                        o.set('title', createForm.value.title);
+                        o.set('boss', createForm.value.boss || '其他');
+                        o.set('location', createForm.value.location);
+                        // FIX: Save deadline as String to match existing DB schema (Date object caused 400 error)
+                        o.set('deadline', createForm.value.deadline);
+                        o.set('desc', createForm.value.desc);
+                        o.set('maxPlayers', createForm.value.maxPlayers);
+                        o.set('isSticky', createForm.value.isSticky);
+                        // Save minLevel if enabled, else 0 or null
+                        o.set('minLevel', createForm.value.enableLevelLimit ? createForm.value.minLevel : 0);
+
+                        await o.save();
+                        showCreateModal.value = false;
+                        showToast(isEditingExpedition.value ? '活动修改成功' : '活动发布成功', 'success');
+
+                        // Reset form
+                        createForm.value = { title: '', boss: '', location: '', deadline: '', desc: '', maxPlayers: null, isSticky: false, enableLevelLimit: false, minLevel: null };
+
+                        // Refresh data
+                        if (isEditingExpedition.value && currentExpedition.value && currentExpedition.value.id === editingExpeditionId.value) {
+                            // Also update current view if editing the one being viewed
+                            const updated = await o.fetch();
+                            currentExpedition.value = { id: updated.id, ...updated.toJSON() };
+                        }
+
+                        fetchExpeditions();
+                    } catch (e) {
+                        console.error(e);
+                        if (e.code === 403) {
+                            showToast('操作失败 (403)：可能是后台表权限未设置为 Public', 'error');
+                        } else {
+                            // 显示具体的错误信息，方便排查
+                            showToast('操作失败: ' + (e.message || '未知错误'), 'error');
+                        }
+                    }
+                };
+
+                const confirmDeleteExp = async (exp) => {
+                    if (confirm(`确认删除活动 "${exp.title}" 吗？\n所有报名记录也将被删除。`)) {
+                        try {
+                            const obj = AV.Object.createWithoutData(CLASS_EXPEDITION, exp.id);
+                            await obj.destroy();
+
+                            // Cleanup participants (Client side loop - acceptable for small scale)
+                            const q = new AV.Query(CLASS_PARTICIPANT);
+                            q.equalTo('expeditionId', exp.id);
+                            const parts = await q.find();
+                            // Attempt to destroy all participants. Note: If they have strict ACLs, this might fail for some.
+                            // But usually, deleting the parent is the main goal.
+                            AV.Object.destroyAll(parts).catch(e => console.warn("Some participants could not be deleted", e));
+
+                            showToast('活动已删除', 'success');
+                            fetchExpeditions();
+                        } catch (e) {
+                            if (e.code === 403) {
+                                showToast('权限不足：无法删除旧版活动', 'error');
+                            } else {
+                                showToast('删除失败', 'error');
+                            }
+                        }
+                    }
+                };
+
+                // Join/Edit Participant
+                const openJoinModal = () => {
+                    if (viewMode.value !== 'detail' || !currentExpedition.value) return;
+                    isEditMode.value = false;
+                    // Auto-fill from localstorage? maybe later
+                    showJoinModal.value = true;
+                };
+
+                const closeJoinModal = () => {
+                    showJoinModal.value = false;
+                    joinForm.value = { role: 'attacker', name: '', job: '', level: '', note: '' };
+                };
+
+                const editParticipant = (p) => {
+                    joinForm.value = { ...p };
+                    editId.value = p.id;
+                    isEditMode.value = true;
+                    showJoinModal.value = true;
+                };
+
+                const handleJoinSubmit = async () => {
+                    try {
+                        // Level Validation Logic
+                        if (joinForm.value.role === 'attacker' && currentExpedition.value.minLevel > 0) {
+                            if (!joinForm.value.level || Number(joinForm.value.level) < currentExpedition.value.minLevel) {
+                                showToast(`等级不足，本车要求最低 Lv.${currentExpedition.value.minLevel}`, 'error');
+                                return;
+                            }
+                        }
+
+                        const Obj = AV.Object.extend(CLASS_PARTICIPANT);
+                        let p;
+                        if (isEditMode.value && editId.value) {
+                            p = AV.Object.createWithoutData(CLASS_PARTICIPANT, editId.value);
+                        } else {
+                            p = new Obj();
+                            p.set('expeditionId', currentExpedition.value.id);
+
+                            // Set owner to current user
+                            p.set('ownerId', currentUser.value.id);
+
+                            const acl = new AV.ACL();
+                            acl.setPublicReadAccess(true);
+                            // CHANGE: Allow Public Write for Admins
+                            acl.setPublicWriteAccess(true);
+                            p.setACL(acl);
+                        }
+
+                        p.set('role', joinForm.value.role);
+                        p.set('name', joinForm.value.name);
+                        p.set('job', joinForm.value.role === 'boss' ? '' : joinForm.value.job);
+                        p.set('level', joinForm.value.role === 'boss' ? '' : String(joinForm.value.level || ''));
+                        p.set('note', joinForm.value.note);
+
+                        await p.save();
+                        closeJoinModal();
+                        showToast(isEditMode.value ? '修改成功' : '上车成功!', 'success');
+                        fetchParticipants();
+                    } catch (e) { showToast('提交失败', 'error'); }
+                };
+
+                const deleteParticipant = async (p) => {
+                    if (confirm('确定下车/删除此记录吗？')) {
+                        try {
+                            const obj = AV.Object.createWithoutData(CLASS_PARTICIPANT, p.id);
+                            await obj.destroy();
+                            showToast('已删除', 'success');
+                            fetchParticipants();
+                        } catch (e) {
+                            if (e.code === 403) {
+                                showToast('权限不足：无法删除旧版数据', 'error');
+                            } else {
+                                showToast('删除失败', 'error');
+                            }
+                        }
+                    }
+                };
+
+                // Admin & Settings
+                const handleAdminLogin = async () => {
+                    // Start loading state
+                    loading.value = true;
+
+                    try {
+                        // Get input password
+                        const inputPassword = loginPassword.value.trim();
+                        console.log('[DEBUG] handleAdminLogin - inputPassword:', inputPassword);
+
+                        if (!inputPassword) {
+                            showToast('请输入密码', 'error');
+                            loading.value = false;
+                            return;
+                        }
+
+                        // Fetch latest config to get current password
+                        console.log('[DEBUG] handleAdminLogin - Calling fetchConfig...');
+                        await fetchConfig();
+                        console.log('[DEBUG] handleAdminLogin - After fetchConfig, adminPassword.value:', adminPassword.value);
+                        console.log('[DEBUG] handleAdminLogin - adminPassword is empty?', !adminPassword.value);
+
+                        // Check if password exists in database
+                        if (!adminPassword.value) {
+                            console.error('[DEBUG] adminPassword.value is falsy:', adminPassword.value);
+                            showToast('系统未设置管理员密码，请在 LeanCloud 后台配置', 'error');
+                            loading.value = false;
+                            return;
+                        }
+
+                        // Compare passwords
+                        console.log('[DEBUG] Comparing passwords...');
+                        console.log('[DEBUG] inputPassword:', inputPassword);
+                        console.log('[DEBUG] adminPassword.value:', adminPassword.value);
+                        console.log('[DEBUG] Match?', inputPassword === adminPassword.value);
+
+                        if (inputPassword === adminPassword.value) {
+                            adminMode.value = true;
+                            showAdminLogin.value = false;
+                            loginPassword.value = ''; // clear input
+                            showToast('管理员验证通过', 'success');
+                        } else {
+                            showToast('密码错误', 'error');
+                        }
+                    } catch (e) {
+                        console.error('Login Error', e);
+                        showToast('验证出错，请重试', 'error');
+                    } finally {
+                        loading.value = false;
+                    }
+                };
+
+                const updateConfig = async (field) => {
+                    try {
+                        const q = new AV.Query(CLASS_CONFIG);
+                        q.descending('createdAt'); // 确保获取最新的配置
+                        let conf = await q.first();
+
+                        if (!conf) {
+                            const C = AV.Object.extend(CLASS_CONFIG);
+                            conf = new C();
+                            const acl = new AV.ACL();
+                            acl.setPublicReadAccess(true);
+                            acl.setPublicWriteAccess(true); // Open for demo
+                            conf.setACL(acl);
+                        } else {
+                            // 确保配置对象也是所有人可写，防止锁死
+                            const acl = conf.getACL() || new AV.ACL();
+                            acl.setPublicWriteAccess(true);
+                            acl.setPublicReadAccess(true);
+                            conf.setACL(acl);
+                        }
+
+                        if (field === 'announcement') {
+                            conf.set('announcement', settingsForm.value.announcement);
+                        } else if (field === 'password') {
+                            // Update password
+                            const newPass = settingsForm.value.newPassword.trim();
+                            if (!newPass) {
+                                showToast('密码不能为空', 'error');
+                                return;
+                            }
+                            conf.set('adminPassword', newPass);
+                        }
+
+                        // 关键修改：先等待保存完成
+                        await conf.save();
+
+                        // 保存成功后再更新本地状态和提示
+                        if (field === 'announcement') {
+                            globalNotice.value = settingsForm.value.announcement;
+                            showToast('公告已更新', 'success');
+                        } else if (field === 'password') {
+                            adminPassword.value = settingsForm.value.newPassword.trim();
+                            settingsForm.value.newPassword = ''; // Clear input
+                            showToast('密码已更新，请牢记新密码', 'success');
+                        }
+                    } catch (e) {
+                        console.error("Config Update Error:", e);
+                        if (e.code === 403) {
+                            showToast('失败：配置表权限不足 (403)，请尝试使用"一键修复全服权限"', 'error');
+                        } else {
+                            showToast('更新失败: ' + (e.message || '未知错误'), 'error');
+                        }
+                    }
+                };
+
+                // 新增：一键修复所有数据的权限
+                const fixAllPermissions = async () => {
+                    if (!confirm('确定要执行权限修复吗？这将尝试把所有活动设置为“公开读写”，以便多管理员管理。\n耗时可能较长，请勿关闭页面。')) return;
+
+                    fixing.value = true;
+                    let successCount = 0;
+                    let failCount = 0;
+
+                    try {
+                        // 1. 修复活动表 (Expedition)
+                        const q = new AV.Query(CLASS_EXPEDITION);
+                        q.limit(1000);
+                        const exps = await q.find();
+
+                        // 批量处理，虽然客户端只能一条条发，但并行处理会快一点
+                        const promises = exps.map(async (exp) => {
+                            try {
+                                const acl = new AV.ACL();
+                                acl.setPublicReadAccess(true);
+                                acl.setPublicWriteAccess(true); // 关键：允许公开写入
+                                exp.setACL(acl);
+                                await exp.save();
+                                successCount++;
+                            } catch (e) {
+                                // 如果是别人的私有数据，这里会报错 403，无法强修，只能跳过
+                                // 但通常如果是之前版本创建的数据，可能只是没设置 PublicWrite，Owner 还是自己
+                                console.warn("Fix permission failed for:", exp.id, e);
+                                failCount++;
+                            }
+                        });
+
+                        await Promise.all(promises);
+
+                        // 2. 尝试修复配置表
+                        const qc = new AV.Query(CLASS_CONFIG);
+                        const confs = await qc.find();
+                        const confPromises = confs.map(async (c) => {
+                            try {
+                                const acl = new AV.ACL();
+                                acl.setPublicReadAccess(true);
+                                acl.setPublicWriteAccess(true);
+                                c.setACL(acl);
+                                await c.save();
+                            } catch (e) { }
+                        });
+                        await Promise.all(confPromises);
+
+                        let msg = `修复完成。成功: ${successCount}`;
+                        if (failCount > 0) msg += `，失败: ${failCount} (可能是他人私有数据)`;
+                        showToast(msg, 'success');
+
+                    } catch (e) {
+                        showToast('修复过程中断: ' + e.message, 'error');
+                    }
+                    fixing.value = false;
+                };
+
+                const cleanupOldData = async () => {
+                    if (!confirm('确定要清理 7 天前的所有活动数据吗？此操作不可恢复。')) return;
+                    cleaning.value = true;
+                    try {
+                        const d = new Date();
+                        d.setDate(d.getDate() - 7);
+
+                        const q = new AV.Query(CLASS_EXPEDITION);
+                        q.lessThan('createdAt', d);
+                        q.limit(100); // Batch limit
+                        const oldExps = await q.find();
+
+                        if (oldExps.length === 0) {
+                            showToast('没有需要清理的数据', 'info');
+                        } else {
+                            await AV.Object.destroyAll(oldExps);
+                            // Ideally we also clean participants, but for simplicity we start with events
+                            // Orphaned participants are less visible/problematic than expired events
+                            showToast(`已清理 ${oldExps.length} 条过期活动`, 'success');
+                            fetchExpeditions();
+                        }
+                    } catch (e) { showToast('清理失败', 'error'); }
+                    cleaning.value = false;
+                };
+
+                // Utilities
+                const showToast = (msg, type = 'info') => {
+                    toast.value = { show: true, msg, type };
+                    setTimeout(() => toast.value.show = false, 3000);
+                };
+
+                // 统一的日期时间格式化函数
+                // 格式: 2026/1/6 周五 8:00
+                const formatTimeWithWeekday = (dateStr) => {
+                    if (!dateStr) return '时间未定';
+                    try {
+                        const date = new Date(dateStr);
+                        if (isNaN(date.getTime())) return dateStr; // Fallback if regular text
+
+                        const y = date.getFullYear();
+                        const m = date.getMonth() + 1;
+                        const d = date.getDate();
+                        const weekArr = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+                        const w = weekArr[date.getDay()];
+
+                        // 不补零的小时 (8:00 vs 08:00)
+                        const hh = date.getHours();
+                        const mm = String(date.getMinutes()).padStart(2, '0');
+
+                        return `${y}/${m}/${d} ${w} ${hh}:${mm}`;
+                    } catch (e) { return dateStr; }
+                };
+
+                const isMe = (p) => {
+                    // Check if current user owns this item
+                    return currentUser.value && p.ownerId === currentUser.value.id;
+                };
+
+                const canEdit = (p) => adminMode.value || isMe(p);
+
+                const attackers = computed(() => participants.value.filter(p => p.role === 'attacker'));
+                const bosses = computed(() => participants.value.filter(p => p.role === 'boss'));
+                const userHasJoined = computed(() => currentUser.value && participants.value.some(p => p.ownerId === currentUser.value.id));
+
+                const getJobClass = (jobName) => {
+                    const g = JOB_GROUPS.find(grp => grp.jobs.includes(jobName));
+                    if (!g) return 'job-other';
+                    if (g.group.includes('战士')) return 'job-warrior';
+                    if (g.group.includes('法师')) return 'job-mage';
+                    if (g.group.includes('弓箭')) return 'job-archer';
+                    if (g.group.includes('飞侠')) return 'job-thief';
+                    if (g.group.includes('海盗')) return 'job-pirate';
+                    return 'job-other';
+                };
+
+                // Helper for List View counts
+                const getParticipantCount = (exp) => {
+                    return exp._participants ? exp._participants.length : 0;
+                };
+
+                const getProgressPercent = (exp) => {
+                    const count = getParticipantCount(exp);
+                    const max = exp.maxPlayers || 30; // default visual max if infinite
+                    return Math.min((count / max) * 100, 100);
+                };
+
+                const hasJoined = (expId) => {
+                    if (!currentUser.value) return false;
+                    // Check local cache in exp object
+                    const exp = expeditions.value.find(e => e.id === expId);
+                    return exp && exp._participants && exp._participants.some(p => p.ownerId === currentUser.value.id);
+                };
+
+                const copyToClipboard = () => {
+                    if (!currentExpedition.value) return;
+                    const e = currentExpedition.value;
+                    const formattedTime = formatTimeWithWeekday(e.deadline);
+                    let t = `⚔️ ${e.title}\n📍 ${e.location}\n⏰ ${formattedTime}\n📝 ${e.desc || '无备注'}\n----------------\n`;
+
+                    // Include level info if exists
+                    if (e.minLevel > 0) {
+                        t += `⚠️ 最低等级: Lv.${e.minLevel}+\n`;
+                    }
+
+                    t += `🛡️ 攻坚组 (${attackers.value.length}${e.maxPlayers ? '/' + e.maxPlayers : ''}):\n`;
+                    attackers.value.forEach((p, i) => {
+                        t += `${i + 1}. ${p.name} (${p.job} ${p.level ? 'Lv.' + p.level : ''}) ${p.note ? '- ' + p.note : ''}\n`;
+                    });
+
+                    if (bosses.value.length > 0) {
+                        t += `\n👑 老板/包车 (${bosses.value.length}):\n`;
+                        bosses.value.forEach((p, i) => {
+                            t += `${i + 1}. ${p.name} ${p.note ? ' (' + p.note + ')' : ''}\n`;
+                        });
+                    }
+
+                    t += `\n🔗 接龙链接: ${window.location.href}`;
+
+                    copySimpleText(t); // Use helper
+                    showToast('接龙文本已复制', 'success');
+                };
+
+                // Helper for simple text copy
+                const copySimpleText = (text) => {
+                    if (!text) return;
+                    const el = document.createElement('textarea');
+                    el.value = text;
+                    document.body.appendChild(el);
+                    el.select();
+                    document.execCommand('copy');
+                    document.body.removeChild(el);
+                    showToast('已复制到剪贴板', 'success');
+                };
+
+                return {
+                    viewMode, loading, configError, toast,
+                    expeditions, currentExpedition, attackers, bosses,
+                    adminMode, showAdminLogin, loginPassword,
+                    showCreateModal, showJoinModal, showSettings,
+                    createForm, joinForm, settingsForm, jobsList, bossOptions, currentFilter,
+                    openCreateModal, openEditExpeditionModal, isEditingExpedition,
+                    handleCreateExpedition, confirmDeleteExp,
+                    openJoinModal, closeJoinModal, handleJoinSubmit,
+                    editParticipant, deleteParticipant,
+                    handleAdminLogin, updateConfig, cleanupOldData, cleaning, fixing, fixAllPermissions, initUser,
+                    selectExpedition, goBack, refreshData, changeFilter,
+                    isMe, canEdit, userHasJoined, hasJoined,
+                    getJobClass, getParticipantCount, getProgressPercent, formatTimeWithWeekday,
+                    copyToClipboard, copySimpleText, globalNotice, showToast, currentUser
+                };
+            }
+        }).mount('#app');
+    </script>
+</body>
+
+</html>
